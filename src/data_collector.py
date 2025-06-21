@@ -24,35 +24,49 @@ class RealTimeStockTracker:
         self.real_time_prices = []
         self.timestamps = []
 
-    def fetch_current_data(self):
+    def fetch_current_data(self, max_retries=3):
         """Fetch the most recent stock data"""
-        try:
-            # Get current day data with 1-minute intervals
-            current = self.ticker.history(period="1d", interval="1m")
+        for attempt in range(max_retries):
+            try:
+                # Try different time periods if 1d fails
+                periods_to_try = ["1d", "2d", "5d"]
 
-            if not current.empty:
-                self.current_data = current
-                latest = current.tail(1)
+                for period in periods_to_try:
+                    try:
+                        current = self.ticker.history(
+                            period=period, interval="1m")
+                        if not current.empty:
+                            self.current_data = current
+                            latest = current.tail(1)
 
-                # Store for tracking
-                self.real_time_prices.append(latest['Close'].iloc[0])
-                self.timestamps.append(datetime.now())
+                            # Store for tracking
+                            self.real_time_prices.append(
+                                latest['Close'].iloc[0])
+                            self.timestamps.append(datetime.now())
 
-                # Keep only last 100 data points for memory efficiency
-                if len(self.real_time_prices) > 100:
-                    self.real_time_prices = self.real_time_prices[-100:]
-                    self.timestamps = self.timestamps[-100:]
+                            self.logger.info(
+                                f"Fetched current data for {self.symbol}: ${latest['Close'].iloc[0]:.2f}")
+                            return latest
 
-                self.logger.info(
-                    f"Fetched current data for {self.symbol}: ${latest['Close'].iloc[0]:.2f}")
-                return latest
-            else:
-                self.logger.warning("No current data available")
-                return None
+                    except Exception as e:
+                        self.logger.warning(
+                            f"Failed to fetch {period} data: {e}")
+                        continue
 
-        except Exception as e:
-            self.logger.error(f"Error fetching current data: {e}")
-            return None
+                # If all periods fail, try historical data as fallback
+                fallback_data = self.ticker.history(period="5d")
+                if not fallback_data.empty:
+                    self.logger.warning(
+                        "Using historical data as fallback for current data")
+                    return fallback_data.tail(1)
+
+            except Exception as e:
+                self.logger.error(f"Attempt {attempt + 1} failed: {e}")
+                if attempt < max_retries - 1:
+                    time.sleep(2)  # Wait before retry
+
+        self.logger.error("All attempts to fetch current data failed")
+        return None
 
     def fetch_historical_data(self, period="1y"):
         """Fetch historical stock data for training"""
@@ -136,16 +150,33 @@ class RealTimeStockTracker:
         return indicators.dropna()
 
     def is_market_open(self):
-        """Check if the market is currently open (simplified)"""
-        now = datetime.now()
-        # Market hours: 9:30 AM - 4:00 PM EST, Monday-Friday
-        if now.weekday() >= 5:  # Weekend
-            return False
+        """Enhanced market hours check"""
+        from datetime import datetime
+        import pytz
+        
+        try:
+            # Get current time in EST
+            est = pytz.timezone('US/Eastern')
+            now_est = datetime.now(est)
+            
+            # Weekend check
+            if now_est.weekday() >= 5:  # Saturday = 5, Sunday = 6
+                return False, "Market closed: Weekend"
+            
+            # Market hours: 9:30 AM - 4:00 PM EST
+            market_open = now_est.replace(hour=9, minute=30, second=0, microsecond=0)
+            market_close = now_est.replace(hour=16, minute=0, second=0, microsecond=0)
+            
+            if now_est < market_open:
+                time_to_open = market_open - now_est
+                return False, f"Market opens at 9:30 AM EST (in {time_to_open})"
+            elif now_est > market_close:
+                return False, "Market closed: After hours"
+            else:
+                return True, "Market is open"
+        except Exception as e:
+            return False, f"Unable to determine market status: {e}"
 
-        market_open = now.replace(hour=9, minute=30, second=0, microsecond=0)
-        market_close = now.replace(hour=16, minute=0, second=0, microsecond=0)
-
-        return market_open <= now <= market_close
 
 
 # Test the data collector
