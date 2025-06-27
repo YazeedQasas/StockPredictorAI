@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Stock Configuration
-STOCK_SYMBOL = "AAPL"
+STOCK_SYMBOL = "AMZN"
 PREDICTION_DAYS = 30
 UPDATE_INTERVAL = 60  # seconds
 

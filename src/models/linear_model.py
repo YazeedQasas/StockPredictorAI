@@ -58,7 +58,7 @@ class LinearStockPredictor(BasePredictor):
         else:
             X_train_poly = X_train
 
-        self.model.fit(X_train_poly, y_train)  # This was the bug!
+        self.model.fit(X_train_poly, y_train) 
         self.is_trained = True
 
         self.logger.info(f"{self.name} model has been trained successfully")

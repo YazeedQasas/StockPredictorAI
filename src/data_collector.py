@@ -97,10 +97,10 @@ class RealTimeStockTracker:
             return None
 
         latest = self.current_data.tail(1)
-        previous_close = self.current_data['Close'].iloc[-2] if len(
-            self.current_data) > 1 else latest['Close'].iloc[0]
 
-        current_price = latest['Close'].iloc[0]
+        previous_close = self.current_data['Close'].iloc[-2] if len( self.current_data) > 1 else latest['Close'].iloc[0]
+
+        current_price = latest['Close'].iloc[0] # Retrieves the "Close" column from current_rpice's latest row
         daily_change = current_price - previous_close
         daily_change_pct = (daily_change / previous_close) * 100
 

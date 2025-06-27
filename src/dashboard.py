@@ -30,6 +30,7 @@ def load_prediction_engine():
     print("🔧 Force training new models...")
     tracker = RealTimeStockTracker()
     data = tracker.fetch_historical_data()
+    
     if data is not None:
         print("📊 Starting model training...")
         performances = engine.train_models(data)

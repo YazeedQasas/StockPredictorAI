@@ -23,7 +23,6 @@ class PredictionEngine:
         self.ensemble_weights = {}
         self.logger = logging.getLogger(__name__)
         self.is_trained = False
-
         self._initialize_models()
 
     def _initialize_models(self):
